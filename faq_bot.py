@@ -1,26 +1,26 @@
 import os
 import faiss
-import numpy as np  # CHANGED: Moved numpy import to top level
+import numpy as np 
 import tiktoken
 import time
 import pickle
 from typing import List, Tuple, Optional
 from pathlib import Path
 from dotenv import load_dotenv
-from openai import OpenAI  # CHANGED: Updated to new OpenAI client
+from openai import OpenAI 
 import gradio as gr
 
 # Load environment variables
 load_dotenv()
 
-# CHANGED: Use new OpenAI client initialization
+# Use new OpenAI client initialization
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 EMBED_MODEL = "text-embedding-3-small"
 CHUNK_SIZE = 500  # in tokens
-CHUNK_OVERLAP = 100  # CHANGED: Added overlap for better context preservation
+CHUNK_OVERLAP = 100  
 TOP_K = 3
-INDEX_FILE = "rag_index.pkl"  # CHANGED: Added persistence file
+INDEX_FILE = "rag_index.pkl"  
 
 def get_embedding(text: str, max_retries: int = 3) -> Optional[List[float]]:
     """
@@ -34,17 +34,15 @@ def get_embedding(text: str, max_retries: int = 3) -> Optional[List[float]]:
     Returns:
         List of floats representing the embedding, or None if all retries fail
     """
-    # CHANGED: Added retry logic and error handling
     for attempt in range(max_retries):
-        try:
-            # CHANGED: Updated to new OpenAI client syntax
-            response = client.embeddings.create(model=EMBED_MODEL, input=[text])
-            return response.data[0].embedding
-        except Exception as e:
-            print(f"Embedding attempt {attempt + 1} failed: {e}")
-            if attempt == max_retries - 1:
-                print(f"Failed to get embedding after {max_retries} attempts")
-                return None
+    try:
+        response = client.embeddings.create(model=EMBED_MODEL, input=[text])
+        return response.data[0].embedding
+    except Exception as e:
+        print(f"Embedding attempt {attempt + 1} failed: {e}")
+        if attempt == max_retries - 1:
+            print(f"Failed to get embedding after {max_retries} attempts")
+            return None
             time.sleep(2 ** attempt)  # Exponential backoff
     return None
 
@@ -61,15 +59,13 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
     Returns:
         List of text chunks
     """
-    # CHANGED: Added overlap parameter and logic
     enc = tiktoken.encoding_for_model("gpt-4")
     tokens = enc.encode(text)
     chunks = []
     
-    # CHANGED: Step by (chunk_size - overlap) to create overlapping chunks
     for i in range(0, len(tokens), chunk_size - overlap):
         chunk = tokens[i:i + chunk_size]
-        if len(chunk) > 0:  # CHANGED: Added validation to avoid empty chunks
+        if len(chunk) > 0: 
             chunks.append(enc.decode(chunk))
     
     return chunks
@@ -87,7 +83,6 @@ def load_documents(folder_path: str) -> List[Tuple[str, str]]:
     docs = []
     folder = Path(folder_path)
     
-    # CHANGED: Added validation for folder existence
     if not folder.exists():
         print(f"Warning: Folder '{folder_path}' does not exist")
         return docs
@@ -95,10 +90,9 @@ def load_documents(folder_path: str) -> List[Tuple[str, str]]:
     for filepath in folder.rglob("*.*"):
         if filepath.suffix in [".txt", ".md"]:
             try:
-                # CHANGED: Added error handling for file reading
                 with open(filepath, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    if content.strip():  # CHANGED: Only add non-empty files
+                    if content.strip():  
                         docs.append((str(filepath), content))
             except Exception as e:
                 print(f"Error reading file {filepath}: {e}")
@@ -117,9 +111,8 @@ def build_index(documents: List[Tuple[str, str]]) -> Tuple[faiss.Index, List[str
     Returns:
         Tuple of (faiss_index, text_chunks, metadata)
     """
-    # CHANGED: Updated dimension to match text-embedding-3-small
     index = faiss.IndexFlatL2(1536)
-    texts, metadata = [], []  # CHANGED: Removed redundant embeddings list
+    texts, metadata = [], [] 
     
     total_chunks = 0
     for path, doc in documents:
@@ -129,7 +122,7 @@ def build_index(documents: List[Tuple[str, str]]) -> Tuple[faiss.Index, List[str
             
             for chunk in chunks:
                 emb = get_embedding(chunk)
-                if emb is not None:  # CHANGED: Added validation for embedding success
+                if emb is not None: 
                     index.add(np.array([emb], dtype='float32'))
                     texts.append(chunk)
                     metadata.append(path)
@@ -156,7 +149,6 @@ def search_index(query: str, index: faiss.Index, texts: List[str], metadata: Lis
     Returns:
         List of relevant text chunks
     """
-    # CHANGED: Added error handling for query embedding
     emb = get_embedding(query)
     if emb is None:
         print("Failed to embed query, returning empty results")
@@ -165,7 +157,6 @@ def search_index(query: str, index: faiss.Index, texts: List[str], metadata: Lis
     try:
         D, I = index.search(np.array([emb], dtype='float32'), TOP_K)
         
-        # CHANGED: Added validation for search results
         results = []
         for i in I[0]:
             if i < len(texts):  # Ensure index is valid
@@ -187,7 +178,6 @@ def ask_gpt(question: str, context: str) -> str:
     Returns:
         GPT's response as a string
     """
-    # CHANGED: Improved system prompt for better responses
     system_prompt = """You are a helpful AI assistant answering questions based on internal documentation. 
     Use the provided context to answer questions accurately. If the context doesn't contain enough information 
     to answer the question, say so clearly."""
@@ -198,7 +188,6 @@ def ask_gpt(question: str, context: str) -> str:
     ]
     
     try:
-        # CHANGED: Updated to new OpenAI client syntax
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
@@ -206,7 +195,6 @@ def ask_gpt(question: str, context: str) -> str:
         )
         return response.choices[0].message.content
     except Exception as e:
-        # CHANGED: Added error handling for GPT API calls
         print(f"GPT API call failed: {e}")
         return "I'm sorry, I couldn't generate a response due to an API error."
 
@@ -220,7 +208,6 @@ def save_index(index: faiss.Index, texts: List[str], metadata: List[str], filena
         metadata: List of source file paths
         filename: File to save to
     """
-    # CHANGED: Added index persistence functionality
     try:
         with open(filename, 'wb') as f:
             pickle.dump((index, texts, metadata), f)
@@ -238,7 +225,6 @@ def load_index(filename: str = INDEX_FILE) -> Optional[Tuple[faiss.Index, List[s
     Returns:
         Tuple of (faiss_index, text_chunks, metadata) or None if loading fails
     """
-    # CHANGED: Added index loading functionality
     try:
         if Path(filename).exists():
             with open(filename, 'rb') as f:
@@ -285,12 +271,10 @@ def chat_response(message):
 if __name__ == "__main__":
     print("RAG Chatbot starting up...")
     
-    # CHANGED: Added API key validation
     if not os.getenv("OPENAI_API_KEY"):
         print("Error: OPENAI_API_KEY environment variable not set")
         exit(1)
     
-    # CHANGED: Try to load existing index first
     print("Checking for existing index...")
     loaded_data = load_index()
     
@@ -301,14 +285,12 @@ if __name__ == "__main__":
         print("Building new index...")
         documents = load_documents("context")
         
-        # CHANGED: Added validation for document loading
         if not documents:
             print("No documents found in 'context' directory")
             exit(1)
         
         index, texts, metadata = build_index(documents)
         
-        # CHANGED: Save the index for future use
         save_index(index, texts, metadata)
     
     # Set global variables for Gradio
@@ -316,7 +298,6 @@ if __name__ == "__main__":
     global_texts = texts
     global_metadata = metadata
     
-    # CHANGED: Added better user instructions
     print("\nChatbot ready! Type your questions or 'exit' to quit.")
     print("=" * 50)
 

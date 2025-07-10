@@ -1,0 +1,8 @@
+nohup: ignoring input
+RAG Chatbot starting up...
+Checking for existing index...
+Index loaded from rag_index.pkl
+Use existing data? (type "yes" for yes) Traceback (most recent call last):
+  File "/home/ec2-user/rock-climbing-faq-bot/faq_bot.py", line 281, in <module>
+    if loaded_data and input("Use existing data? (type \"yes\" for yes) ") == "yes":
+OSError: [Errno 9] Bad file descriptor

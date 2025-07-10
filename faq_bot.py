@@ -257,7 +257,7 @@ global_index = None
 global_texts = None
 global_metadata = None
 
-def chat_response(message):
+def chat_response(message, history):
     """Gradio chat function"""
     global global_index, global_texts, global_metadata
     
@@ -306,13 +306,10 @@ if __name__ == "__main__":
     
     if use_gradio == "yes":
         # Create simple Gradio interface
-        iface = gr.Interface(
+        iface = gr.ChatInterface(
             fn=chat_response,
-            inputs=gr.Textbox(label="Your question", placeholder="Type your question here..."),
-            outputs=gr.Textbox(label="Answer"),
             title="Texas Rock Climbing FAQ Chatbot",
-            description="Ask me questions about TRC! (example: \"What do I have to do to become a member?\")",
-            allow_flagging="never"
+            type="messages"
         )
         
         print("Starting Gradio interface...")
@@ -329,3 +326,6 @@ if __name__ == "__main__":
             print("Processing...")
             response = run_query(query, index, texts, metadata)
             print(f"\nAnswer:\n{response}")
+
+
+

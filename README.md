@@ -2,7 +2,7 @@
 The chatbot uses a Python-based Retrieval-Augmented Generation (RAG) system to generate contextual answers based on club documentation. It embeds and indexes relevant documents, and uses OpenAI's API to provide accurate, context-aware responses.
 
 **Tech Stack**
-OpenAI API — Generates responses using GPT models
+OpenAI API — Generates responses using GPT models\n
 FAISS — Fast similarity search over embedded document chunks
 tiktoken — Handles token-aware chunking of documents
 Gradio — Frontend UI for chatting with the bot

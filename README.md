@@ -23,6 +23,6 @@ Option to use either a terminal interface or a Gradio web interface.
 **TODO**:  
 * Read context only once at the beginning.   
 * Move remote server connection to HTTPS  
-* Move frontend to "chat-style"  
+* [FIXED✅] Move frontend to "chat-style"  
 * Add more context for GPT to use  
 * Deploy using IAC  
